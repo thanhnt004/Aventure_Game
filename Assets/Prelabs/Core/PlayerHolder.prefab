@@ -3525,7 +3525,7 @@ PrefabInstance:
       objectReference: {fileID: 6064354903414377254}
     - target: {fileID: 7256038655134163537, guid: ee9ad4487af4c0945992c742ddca7d5a, type: 3}
       propertyPath: maxHealth
-      value: 3
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 7256038655134163537, guid: ee9ad4487af4c0945992c742ddca7d5a, type: 3}
       propertyPath: components.Array.size
