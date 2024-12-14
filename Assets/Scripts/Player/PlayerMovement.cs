@@ -8,37 +8,31 @@ public class PlayerMovement : MonoBehaviour
     public PlayerAtribute Data;
     #region Variables
     public Rigidbody2D rb { get; private set; }
-    //
-    //Variables control the various actions the player can perform at any time.
-	//These are fields which can are public allowing for other sctipts to read them
-	//but can only be privately written to.
-	public bool IsFacingRight { get; private set; }
-	public bool IsJumping { get; private set; }
-	public bool IsWallJumping { get; private set; }
-	public bool IsSliding { get; private set; }
-	public bool IsGrounded;
+    //Các biến điều hiện, thể hiện trạng thái của nhân vật
+	public bool IsFacingRight { get; private set; }//đang nhìn phải
+	public bool IsJumping { get; private set; }//đang nhảy
+	public bool IsWallJumping { get; private set; }//đang bật nhảy khỏi tường
+	public bool IsSliding { get; private set; }//đang trượt
 
-	//Timers (also all fields, could be private and a method returning a bool could be used)
+	//Các biến thời gian chỉ thời gian cuối của từng trạng thái
 	public float LastOnGroundTime { get; private set; }
 	public float LastOnWallTime { get; private set; }
 	public float LastOnWallRightTime { get; private set; }
 	public float LastOnWallLeftTime { get; private set; }
 	
-	//Jump
-	private bool _isJumpCut;
-	private bool _isJumpFalling;
+	//Trạng thái nhảy
+	private bool _isJumpCut;//khi thả nút nhảy 
+	private bool _isJumpFalling;//Khi nhân vật rơirơi 
+	private float _wallJumpStartTime;//thời gian bắt đầu bật khỏi tường 
+	private int _lastWallJumpDir;//Hướng nhảy 
+	public float LastPressedJumpTime { get; private set; }// thời gina bấm nhảy
 
-	//Wall Jump
-	private float _wallJumpStartTime;
-	private int _lastWallJumpDir;
-
-	private Vector2 _moveInput;
-	public float LastPressedJumpTime { get; private set; }
+	private Vector2 _moveInput;//Hướng chuyển động của nhân vật
 	//Audio
-    private AudioManager audioManager;
+    private AudioManager audioManager;//Biến điều khiển audio
+	//Các biến lưu trữ vùng kiểm tra trạng thái của nhân vật
     [Header("Checks")] 
 	[SerializeField] private Transform _groundCheckPoint;
-	//Size of groundCheck depends on the size of your character generally you want them slightly small than width (for ground) and height (for the wall check)
 	[SerializeField] private Vector2 _groundCheckSize = new Vector2(0.49f, 0.03f);
 	[Space(5)]
 	[SerializeField] private Transform _frontWallCheckPoint;
@@ -61,8 +55,6 @@ public class PlayerMovement : MonoBehaviour
 		SetGravityScale(Data.gravityScale);
 		IsFacingRight = true;
 	}
-
-    // Update is called once per frame
     void Update()
     {
         #region TIMERS
@@ -72,39 +64,29 @@ public class PlayerMovement : MonoBehaviour
 		LastOnWallLeftTime -= Time.deltaTime;
 		LastPressedJumpTime -= Time.deltaTime;
 		#endregion
+		//Kiểm tra trạng thái vị trí của nhân vật
         #region COLLISION CHECKS
 		if (!IsJumping)
 		{
-			//Ground Check
-			if (Physics2D.OverlapBox(_groundCheckPoint.position, _groundCheckSize, 0, _groundLayer) ) //checks if set box overlaps with ground
+			//kiểm tra mặt đất
+			if (Physics2D.OverlapBox(_groundCheckPoint.position, _groundCheckSize, 0, _groundLayer) ) 
 			{
-				if(LastOnGroundTime < -0.1f)
-                {
-					animator.SetTrigger("grounded");
-                }
-				IsGrounded = true;
 				LastOnGroundTime = Data.coyoteTime; 
             }
-			else
-			{
-				IsGrounded = false;
-			}
-
-			//Right Wall Check
+			//kiểm tra tường bên trái
 			if (((Physics2D.OverlapBox(_frontWallCheckPoint.position, _wallCheckSize, 0, _groundLayer) && IsFacingRight)
 					|| (Physics2D.OverlapBox(_backWallCheckPoint.position, _wallCheckSize, 0, _groundLayer) && !IsFacingRight)) && !IsWallJumping)
 				LastOnWallRightTime = Data.coyoteTime;
 
-			//Right Wall Check
+			//Tường bên phải
 			if (((Physics2D.OverlapBox(_frontWallCheckPoint.position, _wallCheckSize, 0, _groundLayer) && !IsFacingRight)
 				|| (Physics2D.OverlapBox(_backWallCheckPoint.position, _wallCheckSize, 0, _groundLayer) && IsFacingRight)) && !IsWallJumping)
 				LastOnWallLeftTime = Data.coyoteTime;
 
-			//Two checks needed for both left and right walls since whenever the play turns the wall checkPoints swap sides
 			LastOnWallTime = Mathf.Max(LastOnWallLeftTime, LastOnWallRightTime);
 		}
 		#endregion
-
+		//Kiểm tra trạng thái nhảy 
 		#region JUMP CHECKS
 		if (IsJumping && rb.linearVelocityY < 0)
 		{
@@ -123,7 +105,7 @@ public class PlayerMovement : MonoBehaviour
 			_isJumpFalling = false;
 		}
 
-		//Jump
+		//Nhảy 
 		if (CanJump() && LastPressedJumpTime > 0)
 		{
 			IsJumping = true;
@@ -134,7 +116,7 @@ public class PlayerMovement : MonoBehaviour
 			animator.SetTrigger("jump");
 			audioManager.PlaySFX(audioManager.jump);
 		}
-		//WALL JUMP
+		//Bật tường 
 		else if (CanWallJump() && LastPressedJumpTime > 0)
 		{
 			IsWallJumping = true;
@@ -149,33 +131,31 @@ public class PlayerMovement : MonoBehaviour
 			audioManager.PlaySFX(audioManager.jump);
 		}
 		#endregion
-
+		//Kiểm tra điều kiện trượt 
 		#region SLIDE CHECKS
 		if (CanSlide() && ((LastOnWallLeftTime > 0 && _moveInput.x < 0) || (LastOnWallRightTime > 0 && _moveInput.x > 0)))
 		{
 			IsSliding = true;
-			Debug.Log("Sliced");
 		}
 		else
 			IsSliding = false;
 		#endregion
-
+		//Set trọng lực trong các trạng thái khác nhau 
 		#region GRAVITY
-		//Higher gravity if we've released the jump input or are falling
 		if (IsSliding)
 		{
 			SetGravityScale(0);
 		}
 		else if (rb.linearVelocityY < 0 && _moveInput.y < 0)
 		{
-			//Much higher gravity if holding down
+			//Tăng trọng lực khi nhấn nút xuống fastFallGravityMult
 			SetGravityScale(Data.gravityScale * Data.fastFallGravityMult);
-			//Caps maximum fall speed, so when falling over large distances we don't accelerate to insanely high speeds
+			//Giới hạn tốc độ rơi
 			rb.linearVelocity = new Vector2(rb.linearVelocityX, Mathf.Max(rb.linearVelocityY, -Data.maxFastFallSpeed));
 		}
 		else if (_isJumpCut)
 		{
-			//Higher gravity if jump button released
+			//Tăng trọng lực khi thả nút nhảy jumpCutGravityMult
 			SetGravityScale(Data.gravityScale * Data.jumpCutGravityMult);
 			rb.linearVelocity = new Vector2(rb.linearVelocityX, Mathf.Max(rb.linearVelocityY, -Data.maxFallSpeed));
 		}
@@ -185,42 +165,44 @@ public class PlayerMovement : MonoBehaviour
 		}
 		else if (rb.linearVelocityY < 0)
 		{
-			//Higher gravity if falling
+			//Tăng trọng lực khi rơi fallGravityMult
 			SetGravityScale(Data.gravityScale * Data.fallGravityMult);
-			//Caps maximum fall speed, so when falling over large distances we don't accelerate to insanely high speeds
 			rb.linearVelocity = new Vector2(rb.linearVelocityX, Mathf.Max(rb.linearVelocityY, -Data.maxFallSpeed));
 		}
 		else
 		{
-			//Default gravity if standing on a platform or moving upwards
+			//trongj lực trong trạng thái bình thường 
 			SetGravityScale(Data.gravityScale);
 		}
 		#endregion
     }
     private void FixedUpdate()
 	{
-		//Handle Run
+		//Xử lý trạng thái chạy 
 		if (IsWallJumping)
 			Run(Data.wallJumpRunLerp);
 		else
 			Run(1);
 
-		//Handle Slide
+		//Xử lý trạng thái trượt 
 		if (IsSliding)
 			Slide();
     }
     #region INPUT HANDLER
+	//Khi bấm và thả nút nhảy 
     public void Jumped(InputAction.CallbackContext context)
     {
         if(context.performed)
         {
-            OnJumpInput();
+           LastPressedJumpTime = Data.jumpInputBufferTime;
         }
         else if(context.canceled)
         {
-            OnJumpUpInput();
-                   }
+            if (CanJumpCut() || CanWallJumpCut())
+			_isJumpCut = true;
+        }
     }
+	//Khi ấn nút di chuyển  
     public void Moved(InputAction.CallbackContext context)
     {
         _moveInput  = context.ReadValue<Vector2>();
@@ -229,31 +211,19 @@ public class PlayerMovement : MonoBehaviour
 			CheckDirectionToFace(_moveInput.x > 0);
     	}	
 	}
-			
-     public void OnJumpInput()
-	{
-		LastPressedJumpTime = Data.jumpInputBufferTime;
-	}
-
-	public void OnJumpUpInput()
-	{
-		if (CanJumpCut() || CanWallJumpCut())
-			_isJumpCut = true;
-	}
     #endregion
     #region RUN METHODS
     private void Run(float lerpAmount)
 	{
-		//Calculate the direction we want to move in and our desired velocity
+		//tính toán vận tốc và hướng 
 		float targetSpeed = _moveInput.x * Data.runMaxSpeed;
-		//We can reduce are control using Lerp() this smooths changes to are direction and speed
+		//Giảm sự chuyển động sử dụng lerp 
 		targetSpeed = Mathf.Lerp(rb.linearVelocityX, targetSpeed, lerpAmount);
 
 		#region Calculate AccelRate
 		float accelRate;
 
-		//Gets an acceleration value based on if we are accelerating (includes turning) 
-		//or trying to decelerate (stop). As well as applying a multiplier if we're air borne.
+		//Lấy gia tốc 
 		if (LastOnGroundTime > 0)
 			accelRate = (Mathf.Abs(targetSpeed) > 0.01f) ? Data.runAccelAmount : Data.runDeccelAmount;
 		else
@@ -261,7 +231,7 @@ public class PlayerMovement : MonoBehaviour
 		#endregion
 
 		#region Add Bonus Jump Apex Acceleration
-		//Increase are acceleration and maxSpeed when at the apex of their jump, makes the jump feel a bit more bouncy, responsive and natural
+		//Gia tốc khi nhảy 
 		if ((IsJumping || IsWallJumping || _isJumpFalling) && Mathf.Abs(rb.linearVelocityY) < Data.jumpHangTimeThreshold)
 		{
 			accelRate *= Data.jumpHangAccelerationMult;
@@ -269,39 +239,34 @@ public class PlayerMovement : MonoBehaviour
 		}
 		#endregion
 
+		//Duy trì động lựclực
 		#region Conserve Momentum
-		//We won't slow the player down if they are moving in their desired direction but at a greater speed than their maxSpeed
 		if(Data.doConserveMomentum && Mathf.Abs(rb.linearVelocityX) > Mathf.Abs(targetSpeed) && Mathf.Sign(rb.linearVelocityX) == Mathf.Sign(targetSpeed) && Mathf.Abs(targetSpeed) > 0.01f && LastOnGroundTime < 0)
 		{
-			//Prevent any deceleration from happening, or in other words conserve are current momentum
-			//You could experiment with allowing for the player to slightly increae their speed whilst in this "state"
 			accelRate = 0; 
 		}
 		#endregion
 
-		//Calculate difference between current velocity and desired velocity
+		//Tính toán khoảng cách giữa vận tốc hiện tại và vận tốc cực đại 
 		float speedDif = targetSpeed - rb.linearVelocityX;
-		//Calculate force along x-axis to apply to thr player
+		//Tính toán lực cần thiết 
 
 		float movement = speedDif * accelRate;
 
-		//Convert this to a vector and apply to rigidbody
+		//Tác dụng lực lên nhân vật 
 		rb.AddForce(movement * Vector2.right, ForceMode2D.Force);
-		if(IsGrounded&&_moveInput.x!=0)
+		if(LastOnGroundTime>0&&_moveInput.x!=0)
 			{
 				animator.SetBool("run",_moveInput.x!=0);
 			}
-		else
+		else if(LastOnGroundTime>0&&_moveInput.x==0)
 			animator.SetBool("run",false);
 		/*
-		 * For those interested here is what AddForce() will do
 		 * RB.velocity = new Vector2(RB.velocity.x + (Time.fixedDeltaTime  * speedDif * accelRate) / RB.mass, RB.velocity.y);
-		 * Time.fixedDeltaTime is by default in Unity 0.02 seconds equal to 50 FixedUpdate() calls per second
 		*/
 	}
     private void Turn()
 	{
-		//stores scale and flips the player along the x axis, 
 		Vector3 scale = transform.localScale; 
 		scale.x *= -1;
 		transform.localScale = scale;
@@ -312,25 +277,19 @@ public class PlayerMovement : MonoBehaviour
     #region JUMP METHODS
     private void Jump()
 	{
-		//Ensures we can't call Jump multiple times from one press
 		LastPressedJumpTime = 0;
 		LastOnGroundTime = 0;
-
+	Debug.Log(LastOnGroundTime);
 		#region Perform Jump
-		//We increase the force applied if we are falling
-		//This means we'll always feel like we jump the same amount 
-		//(setting the player's Y velocity to 0 beforehand will likely work the same, but I find this more elegant :D)
 		float force = Data.jumpForce;
 		if (rb.linearVelocityY < 0)
 			force -= rb.linearVelocityY;
 		rb.AddForce(Vector2.up * force, ForceMode2D.Impulse);
 		#endregion
-        Debug.Log("JUpmed");
 	}
 
 	private void WallJump(int dir)
 	{
-		//Ensures we can't call Wall Jump multiple times from one press
 		LastPressedJumpTime = 0;
 		LastOnGroundTime = 0;
 		LastOnWallRightTime = 0;
@@ -338,17 +297,15 @@ public class PlayerMovement : MonoBehaviour
 
 		#region Perform Wall Jump
 		Vector2 force = new Vector2(Data.wallJumpForce.x, Data.wallJumpForce.y);
-		force.x *= dir; //apply force in opposite direction of wall
+		force.x *= dir; 
 
 		if (Mathf.Sign(rb.linearVelocityX) != Mathf.Sign(force.x))
 			force.x -= rb.linearVelocityX;
 
-		if (rb.linearVelocityY < 0) //checks whether player is falling, if so we subtract the velocity.y (counteracting force of gravity). This ensures the player always reaches our desired jump force or greater
+		if (rb.linearVelocityY < 0) 
 			force.y -= rb.linearVelocityY;
 		if(( dir==1 &&_moveInput.x<0)||(dir == -1 && _moveInput.x>0 ))
 			Turn();
-		//Unlike in the run we want to use the Impulse mode.
-		//The default mode will apply are force instantly ignoring masss
 		rb.AddForce(force, ForceMode2D.Impulse);
 		#endregion
 	}
@@ -357,18 +314,12 @@ public class PlayerMovement : MonoBehaviour
 	#region OTHER MOVEMENT METHODS
 	private void Slide()
 	{
-		//We remove the remaining upwards Impulse to prevent upwards sliding
 		if(rb.linearVelocityY > 0)
 		{
 		    rb.AddForce(-rb.linearVelocityY * Vector2.up,ForceMode2D.Impulse);
 		}
-	
-		//Works the same as the Run but only in the y-axis
-		//THis seems to work fine, buit maybe you'll find a better way to implement a slide into this system
 		float speedDif = Data.slideSpeed - rb.linearVelocityY;	
 		float movement = speedDif * Data.slideAccel;
-		//So, we clamp the movement here to prevent any over corrections (these aren't noticeable in the Run)
-		//The force applied can't be greater than the (negative) speedDifference * by how many times a second FixedUpdate() is called. For more info research how force are applied to rigidbodies.
 		movement = Mathf.Clamp(movement, -Mathf.Abs(speedDif)  * (1 / Time.fixedDeltaTime), Mathf.Abs(speedDif) * (1 / Time.fixedDeltaTime));
 
 		rb.AddForce(movement * Vector2.up);
