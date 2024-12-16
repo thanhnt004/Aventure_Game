@@ -3481,7 +3481,7 @@ PrefabInstance:
       objectReference: {fileID: 7597992125270338015}
     - target: {fileID: 7031280595019821121, guid: ee9ad4487af4c0945992c742ddca7d5a, type: 3}
       propertyPath: NumOfAttack
-      value: 1000
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 7031280595019821121, guid: ee9ad4487af4c0945992c742ddca7d5a, type: 3}
       propertyPath: fireBalls.Array.size
