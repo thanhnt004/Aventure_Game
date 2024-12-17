@@ -10,7 +10,9 @@ public class SpikeHead : EnemyDamage
     [SerializeField] private float range;
     [SerializeField] private float checkDelay;
     [SerializeField] private LayerMask playerLayer;
-    private Vector3[] directions = new Vector3[4];
+    [SerializeField] private bool doc;
+    [SerializeField] private bool ngang;
+    private Vector3[] directions;
     private Vector3 destination;
     private float checkTimer;
     private bool attacking;
@@ -19,10 +21,13 @@ public class SpikeHead : EnemyDamage
     {
         Stop();
     }
-    private void Update()
+    private void Awake()
     {
-        //Move spikehead to destination only if attacking
-        
+        if(doc == true&&ngang == true)
+            directions = new Vector3[4];
+        else
+            directions = new Vector3[2];
+
     }
     void FixedUpdate()
     {
@@ -38,8 +43,6 @@ public class SpikeHead : EnemyDamage
     private void CheckForPlayer()
     {
         CalculateDirections();
-
-        //Check if spikehead sees player in all 4 directions
         for (int i = 0; i < directions.Length; i++)
         {
             Debug.DrawRay(transform.position, directions[i], Color.red);
@@ -56,14 +59,28 @@ public class SpikeHead : EnemyDamage
     }
     private void CalculateDirections()
     {
-        directions[0] = transform.right * range; //Right direction
-        directions[1] = -transform.right * range; //Left direction
-        directions[2] = transform.up * range; //Up direction
-        directions[3] = -transform.up * range; //Down direction
+        if(doc == true && ngang == true)
+        {
+            directions[0] = transform.right * range; 
+            directions[1] = -transform.right * range;
+            directions[2] = transform.up * range; 
+            directions[3] = -transform.up * range; 
+        }
+        else if(doc == true && ngang == false)
+        {
+            directions[0] = transform.up * range; 
+            directions[1] = -transform.up * range;
+        }
+        else if(ngang == true && doc ==false)
+        {
+            directions[0] = transform.right * range; 
+            directions[1] = -transform.right * range;
+        }
+        
     }
     private void Stop()
     {
-        destination = transform.position; //Set destination as current position so it doesn't move
+        destination = transform.position; 
         attacking = false;
     }
 
@@ -72,6 +89,6 @@ public class SpikeHead : EnemyDamage
         base.OnTriggerEnter2D(collider);
         if(collider.tag == "Enemy")
             return;
-        Stop(); //Stop spikehead once he hits something
+        Stop(); 
     }
 }
