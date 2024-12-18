@@ -205,11 +205,11 @@ public class PlayerMovement : MonoBehaviour
 	//Khi ấn nút di chuyển  
     public void Moved(InputAction.CallbackContext context)
     {
-        _moveInput  = context.ReadValue<Vector2>();
+        _moveInput  = context.ReadValue<Vector2>();	
 		if (_moveInput.x != 0)
 		{
 			CheckDirectionToFace(_moveInput.x > 0);
-    	}	
+    	}
 	}
     #endregion
     #region RUN METHODS
@@ -279,7 +279,6 @@ public class PlayerMovement : MonoBehaviour
 	{
 		LastPressedJumpTime = 0;
 		LastOnGroundTime = 0;
-	Debug.Log(LastOnGroundTime);
 		#region Perform Jump
 		float force = Data.jumpForce;
 		if (rb.linearVelocityY < 0)
@@ -304,8 +303,8 @@ public class PlayerMovement : MonoBehaviour
 
 		if (rb.linearVelocityY < 0) 
 			force.y -= rb.linearVelocityY;
-		if(( dir==1 &&_moveInput.x<0)||(dir == -1 && _moveInput.x>0 ))
-			Turn();
+		// if(( dir==1 &&_moveInput.x<0)||(dir == -1 && _moveInput.x>0 ))
+		// 	Turn();
 		rb.AddForce(force, ForceMode2D.Impulse);
 		#endregion
 	}
@@ -382,10 +381,8 @@ public class PlayerMovement : MonoBehaviour
 	private IEnumerator BoostSpeed(float time,float amount) 
 	{ 
 		Data.runMaxSpeed += amount;
-		Debug.Log("Start"+ Data.runMaxSpeed);
 		yield return new WaitForSeconds(time); 
 		Data.runMaxSpeed -= amount;
-		Debug.Log("End" + Data.runMaxSpeed);
 	}
 	#endregion
 }
